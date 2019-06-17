@@ -1,3 +1,6 @@
+from os.path import join, exists
+import os
+
 import matplotlib.pyplot as plt
 from sklearn.datasets import fetch_mldata
 from sklearn.datasets.base import get_data_home
@@ -8,24 +11,21 @@ import numpy as np
 from scipy.ndimage.interpolation import rotate
 from skimage.transform import resize
 
-from os.path import join, exists
-import os
-
 from tqdm import tqdm
 import argparse
 
-parser = argparse.ArgumentParser()  
+parser = argparse.ArgumentParser()
 
-parser.add_argument("-n", "--name", default='MNIST_A_default')
+parser.add_argument("-n", "--name", default='MNIST_A')
 parser.add_argument("-i", "--iteration", type=int, default=1000)
-tp = lambda x:list(map(int, x.split(',')))
+tp = lambda x: list(map(int, x.split(',')))
 parser.add_argument("-nl", '--number_list', type=tp, default="0,1,2,3,4,5,6,7,8,9")
 parser.add_argument("-pxl", '--pos_x_list', type=tp, default="0,36")
 parser.add_argument("-pyl", '--pos_y_list', type=tp, default="0,36")
-parser.add_argument("-al", '--angle_list', type=tp, default="-45,0,45")
+parser.add_argument("-al", '--angle_list', type=tp, default="45,0,-45")
 parser.add_argument("-sl", '--scale_list', type=tp, default="28,16")
 
-args = parser.parse_args()   
+args = parser.parse_args()
 
 mnist_path = join(get_data_home(), "mldata/mnist-original.mat")
 if not exists(os.path.dirname(mnist_path)):
@@ -39,20 +39,7 @@ mnist_target = mnist["target"].astype(int)
 train_X, test_X, train_y, test_y = train_test_split(mnist_data, mnist_target, random_state=42, test_size=10000)
 test_X, valid_X, test_y, valid_y = train_test_split(test_X, test_y, random_state=42, test_size=2000)
 
-
-def change_scale(image, scale):
-    image = resize(image, (scale, scale), mode='constant')
-    pad_size = int((28-scale)/2)
-    image = np.pad(image, (pad_size, pad_size), 'constant')
-    return image
-
-def change_rotation(image, angle):
-    image = rotate(image, angle)
-    image = resize(image, (28, 28), mode='constant')
-    return image
-
-
-mnist_A_path = "../data/{}/".format(args.name)
+mnist_A_path = "./data/{}/".format(args.name)
 for p in ["train_X", "test_X", "valid_X"]:
     path = join(mnist_A_path, p)
     if not exists(path):
@@ -60,9 +47,23 @@ for p in ["train_X", "test_X", "valid_X"]:
 
 np.random.seed(42)
 
+
+def change_scale(image, scale):
+    image = resize(image, (scale, scale), mode='constant')
+    pad_size = int((28-scale)/2)
+    image = np.pad(image, (pad_size, pad_size), 'constant')
+    return image
+
+
+def change_rotation(image, angle):
+    image = rotate(image, angle)
+    image = resize(image, (28, 28), mode='constant')
+    return image
+
+
 def create_mnist_A(data_X, data_y, data_kind, iteration_num):
     mnist_size = 28
-    
+
     number_list = args.number_list
     pos_x_list = args.pos_x_list
     pos_y_list = args.pos_y_list
@@ -77,7 +78,7 @@ def create_mnist_A(data_X, data_y, data_kind, iteration_num):
 
     label_list = []
     for m_, m in enumerate(number_list):
-        data_X_subset = data_X[data_y==m].reshape(-1, mnist_size, mnist_size)
+        data_X_subset = data_X[data_y == m].reshape(-1, mnist_size, mnist_size)
         size = data_X_subset.shape[0]
         range_size = range(size)
         for l in tqdm(range(iteration_num)):
@@ -88,7 +89,7 @@ def create_mnist_A(data_X, data_y, data_kind, iteration_num):
                         sin = np.sin(theta).round(3)
                         cos = np.cos(theta).round(3)
                         for i, scale in enumerate(scale_list):
-                            n =1+i+sl*j+sl*al*k1+sl*al*pxl*k2+sl*al*pxl*pyl*l+sl*al*pxl*pyl*iteration_num*m_
+                            n = 1+i+sl*j+sl*al*k1+sl*al*pxl*k2+sl*al*pxl*pyl*l+sl*al*pxl*pyl*iteration_num*m_
                             index = np.random.choice(range_size)
                             sample = data_X_subset[index]
                             sample_ = change_scale(sample, scale)
@@ -98,7 +99,7 @@ def create_mnist_A(data_X, data_y, data_kind, iteration_num):
                             plt.imsave(join(mnist_A_path, "{}_X/{}.png".format(data_kind, n)), black, cmap=plt.cm.gray)
                             label_list.append([scale, sin, cos, pos_x, pos_y, m])
     mnist_A_label = np.array(label_list)
-    np.save(join(mnist_A_path,"{}_y.npy".format(data_kind)), mnist_A_label)
+    np.save(join(mnist_A_path, "{}_y.npy".format(data_kind)), mnist_A_label)
 
 iteration_num = args.iteration
 print("creating train data...")
